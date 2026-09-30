@@ -14,6 +14,7 @@ import android.widget.VideoView;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.AppCompatButton;
 
@@ -164,7 +165,6 @@ public class MainActivity extends AppCompatActivity {
         btnApplyWallpaper.setEnabled(true);
         btnRemoveVideo.setVisibility(View.VISIBLE);
 
-        // Calculate metadata
         double sizeMb = (double) videoFile.length() / (1024 * 1024);
         long durationSec = 0;
 
@@ -184,7 +184,6 @@ public class MainActivity extends AppCompatActivity {
                 sizeMb, durationSec);
         tvVideoDetails.setText(details);
 
-        // Start local preview
         videoPreview.setVideoPath(videoFile.getAbsolutePath());
         videoPreview.start();
     }
@@ -196,20 +195,75 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
+        ComponentName componentName = new ComponentName(getPackageName(), VideoWallpaperService.class.getName());
+
+        // Strategy 1: Standard ACTION_CHANGE_LIVE_WALLPAPER
         try {
             Intent intent = new Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER);
-            intent.putExtra(WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT,
-                    new ComponentName(this, VideoWallpaperService.class));
+            intent.putExtra(WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT, componentName);
+            intent.putExtra("android.service.wallpaper.extra.LIVE_WALLPAPER_COMPONENT", componentName);
+            intent.putExtra("SET_LOCKSCREEN_WALLPAPER", true);
             startActivity(intent);
-        } catch (Exception e) {
-            // Fallback for older or customized ROMs
-            try {
-                Intent fallback = new Intent(WallpaperManager.ACTION_LIVE_WALLPAPER_CHOOSER);
-                startActivity(fallback);
-            } catch (Exception ex) {
-                Toast.makeText(this, "Tidak dapat membuka pratinjau wallpaper.", Toast.LENGTH_SHORT).show();
-            }
+            return;
+        } catch (Exception ignored) {
         }
+
+        // Strategy 2: ACTION_LIVE_WALLPAPER_CHOOSER
+        try {
+            Intent intent = new Intent(WallpaperManager.ACTION_LIVE_WALLPAPER_CHOOSER);
+            startActivity(intent);
+            return;
+        } catch (Exception ignored) {
+        }
+
+        // Strategy 3: Direct LivePicker package
+        try {
+            Intent intent = new Intent();
+            intent.setComponent(new ComponentName("com.android.wallpaper.livepicker",
+                    "com.android.wallpaper.livepicker.LiveWallpaperPreview"));
+            intent.putExtra("android.service.wallpaper.extra.LIVE_WALLPAPER_COMPONENT", componentName);
+            startActivity(intent);
+            return;
+        } catch (Exception ignored) {
+        }
+
+        // Strategy 4: Google Wallpapers app if installed
+        try {
+            Intent intent = new Intent();
+            intent.setComponent(new ComponentName("com.google.android.apps.wallpaper",
+                    "com.google.android.apps.wallpaper.picker.CategoryPickerActivity"));
+            startActivity(intent);
+            return;
+        } catch (Exception ignored) {
+        }
+
+        // Strategy 5: Generic ACTION_SET_WALLPAPER
+        try {
+            Intent intent = new Intent(Intent.ACTION_SET_WALLPAPER);
+            startActivity(Intent.createChooser(intent, "Setel Wallpaper"));
+            return;
+        } catch (Exception ignored) {
+        }
+
+        // If all system selectors fail: show helpful guidance dialog with direct Play Store link
+        showInstallPickerPrompt();
+    }
+
+    private void showInstallPickerPrompt() {
+        new AlertDialog.Builder(this)
+                .setTitle("Komponen Sistem Belum Tersedia")
+                .setMessage("HP Anda belum memiliki pemilih Live Wallpaper bawaan (biasanya terjadi pada Android Go atau ROM tertentu).\n\nPasang aplikasi 'Wallpaper' resmi dari Google (gratis di Play Store) untuk membuka pratinjau live wallpaper?")
+                .setPositiveButton("Buka Google Play Store", (dialog, which) -> {
+                    try {
+                        startActivity(new Intent(Intent.ACTION_VIEW,
+                                Uri.parse("market://details?id=com.google.android.apps.wallpaper")));
+                    } catch (Exception e) {
+                        startActivity(new Intent(Intent.ACTION_VIEW,
+                                Uri.parse("https://play.google.com/store/apps/details?id=com.google.android.apps.wallpaper")));
+                    }
+                })
+                .setNegativeButton("Tutup", null)
+                .show();
     }
 
     private void removeVideo() {
