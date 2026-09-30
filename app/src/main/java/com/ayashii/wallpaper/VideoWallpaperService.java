@@ -4,21 +4,18 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.Paint;
 import android.media.MediaPlayer;
 import android.os.Build;
 import android.service.wallpaper.WallpaperService;
 import android.util.Log;
+import android.view.Surface;
 import android.view.SurfaceHolder;
 
 import java.io.File;
-import java.io.IOException;
 
 public class VideoWallpaperService extends WallpaperService {
 
-    private static final String TAG = "VideoWallpaperService";
+    private static final String TAG = "VideoWallpaper";
     public static final String ACTION_VIDEO_UPDATED = "com.ayashii.wallpaper.ACTION_VIDEO_UPDATED";
     public static final String VIDEO_FILE_NAME = "wallpaper.mp4";
 
@@ -31,13 +28,13 @@ public class VideoWallpaperService extends WallpaperService {
 
         private MediaPlayer mediaPlayer;
         private boolean isVisible = false;
-        private SurfaceHolder surfaceHolder;
+        private boolean isReceiverRegistered = false;
 
         private final BroadcastReceiver updateReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
                 if (ACTION_VIDEO_UPDATED.equals(intent.getAction())) {
-                    reloadVideo();
+                    startPlayer();
                 }
             }
         };
@@ -45,27 +42,31 @@ public class VideoWallpaperService extends WallpaperService {
         @Override
         public void onCreate(SurfaceHolder surfaceHolder) {
             super.onCreate(surfaceHolder);
-            this.surfaceHolder = surfaceHolder;
-
-            IntentFilter filter = new IntentFilter(ACTION_VIDEO_UPDATED);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                registerReceiver(updateReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
-            } else {
-                registerReceiver(updateReceiver, filter);
+            try {
+                IntentFilter filter = new IntentFilter(ACTION_VIDEO_UPDATED);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    registerReceiver(updateReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+                } else {
+                    registerReceiver(updateReceiver, filter);
+                }
+                isReceiverRegistered = true;
+            } catch (Throwable t) {
+                Log.e(TAG, "Error registering receiver", t);
             }
         }
 
         @Override
         public void onSurfaceCreated(SurfaceHolder holder) {
             super.onSurfaceCreated(holder);
-            this.surfaceHolder = holder;
             startPlayer();
         }
 
         @Override
         public void onSurfaceChanged(SurfaceHolder holder, int format, int width, int height) {
             super.onSurfaceChanged(holder, format, width, height);
-            this.surfaceHolder = holder;
+            if (mediaPlayer == null && isVisible) {
+                startPlayer();
+            }
         }
 
         @Override
@@ -76,114 +77,79 @@ public class VideoWallpaperService extends WallpaperService {
 
         @Override
         public void onVisibilityChanged(boolean visible) {
+            super.onVisibilityChanged(visible);
             this.isVisible = visible;
             if (mediaPlayer != null) {
-                if (visible) {
-                    if (!mediaPlayer.isPlaying()) {
+                try {
+                    if (visible) {
                         mediaPlayer.start();
-                    }
-                } else {
-                    if (mediaPlayer.isPlaying()) {
+                    } else {
                         mediaPlayer.pause();
                     }
+                } catch (Throwable t) {
+                    Log.w(TAG, "Error toggling playback in onVisibilityChanged", t);
                 }
+            } else if (visible) {
+                startPlayer();
             }
         }
 
-        private void startPlayer() {
+        private synchronized void startPlayer() {
             File videoFile = new File(getFilesDir(), VIDEO_FILE_NAME);
             if (!videoFile.exists() || videoFile.length() == 0) {
-                drawPlaceholderCanvas();
                 return;
             }
+
+            SurfaceHolder holder = getSurfaceHolder();
+            if (holder == null) return;
+            Surface surface = holder.getSurface();
+            if (surface == null || !surface.isValid()) return;
 
             releasePlayer();
 
             try {
                 mediaPlayer = new MediaPlayer();
-                mediaPlayer.setDisplay(surfaceHolder);
+                mediaPlayer.setSurface(surface);
                 mediaPlayer.setDataSource(videoFile.getAbsolutePath());
                 mediaPlayer.setLooping(true);
                 mediaPlayer.setVolume(0f, 0f);
 
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
-                    mediaPlayer.setVideoScalingMode(MediaPlayer.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING);
-                }
-
-                mediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
-                    @Override
-                    public void onPrepared(MediaPlayer mp) {
+                mediaPlayer.setOnPreparedListener(mp -> {
+                    try {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+                            mp.setVideoScalingMode(MediaPlayer.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING);
+                        }
                         if (isVisible) {
                             mp.start();
                         }
+                    } catch (Throwable t) {
+                        Log.e(TAG, "Error starting player in onPrepared", t);
                     }
                 });
 
-                mediaPlayer.setOnErrorListener(new MediaPlayer.OnErrorListener() {
-                    @Override
-                    public boolean onError(MediaPlayer mp, int what, int extra) {
-                        Log.e(TAG, "MediaPlayer error: what=" + what + ", extra=" + extra);
-                        releasePlayer();
-                        drawPlaceholderCanvas();
-                        return true;
-                    }
+                mediaPlayer.setOnErrorListener((mp, what, extra) -> {
+                    Log.e(TAG, "MediaPlayer error: " + what + ", " + extra);
+                    releasePlayer();
+                    return true;
                 });
 
                 mediaPlayer.prepareAsync();
 
-            } catch (IOException e) {
-                Log.e(TAG, "Failed to initialize MediaPlayer", e);
+            } catch (Throwable t) {
+                Log.e(TAG, "Failed to initialize MediaPlayer", t);
                 releasePlayer();
-                drawPlaceholderCanvas();
             }
         }
 
-        private void reloadVideo() {
-            if (surfaceHolder != null && surfaceHolder.getSurface().isValid()) {
-                startPlayer();
-            }
-        }
-
-        private void releasePlayer() {
+        private synchronized void releasePlayer() {
             if (mediaPlayer != null) {
                 try {
-                    if (mediaPlayer.isPlaying()) {
-                        mediaPlayer.stop();
-                    }
                     mediaPlayer.reset();
                     mediaPlayer.release();
-                } catch (Exception e) {
-                    Log.w(TAG, "Error releasing MediaPlayer", e);
+                } catch (Throwable t) {
+                    Log.w(TAG, "Error releasing MediaPlayer", t);
                 } finally {
                     mediaPlayer = null;
-                }
-            }
-        }
-
-        private void drawPlaceholderCanvas() {
-            if (surfaceHolder == null) return;
-            Canvas canvas = null;
-            try {
-                canvas = surfaceHolder.lockCanvas();
-                if (canvas != null) {
-                    canvas.drawColor(Color.parseColor("#0F1117"));
-                    Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-                    paint.setColor(Color.parseColor("#9CA3AF"));
-                    paint.setTextSize(36f);
-                    paint.setTextAlign(Paint.Align.CENTER);
-
-                    float x = canvas.getWidth() / 2f;
-                    float y = canvas.getHeight() / 2f;
-                    canvas.drawText("Pilih video di aplikasi", x, y, paint);
-                }
-            } catch (Exception e) {
-                Log.w(TAG, "Error drawing placeholder canvas", e);
-            } finally {
-                if (canvas != null) {
-                    try {
-                        surfaceHolder.unlockCanvasAndPost(canvas);
-                    } catch (Exception ignored) {
-                    }
                 }
             }
         }
@@ -191,9 +157,12 @@ public class VideoWallpaperService extends WallpaperService {
         @Override
         public void onDestroy() {
             super.onDestroy();
-            try {
-                unregisterReceiver(updateReceiver);
-            } catch (Exception ignored) {
+            if (isReceiverRegistered) {
+                try {
+                    unregisterReceiver(updateReceiver);
+                    isReceiverRegistered = false;
+                } catch (Throwable ignored) {
+                }
             }
             releasePlayer();
         }

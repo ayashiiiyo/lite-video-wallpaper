@@ -7,6 +7,7 @@ import android.media.MediaMetadataRetriever;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -27,6 +28,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity {
+
+    private static final String TAG = "MainActivity";
 
     private View layoutEmptyState;
     private View layoutLoadingState;
@@ -64,8 +67,18 @@ public class MainActivity extends AppCompatActivity {
         videoPreview.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
             @Override
             public void onPrepared(MediaPlayer mp) {
-                mp.setLooping(true);
-                mp.setVolume(0f, 0f);
+                try {
+                    mp.setLooping(true);
+                    mp.setVolume(0f, 0f);
+                } catch (Throwable ignored) {
+                }
+            }
+        });
+
+        videoPreview.setOnErrorListener(new MediaPlayer.OnErrorListener() {
+            @Override
+            public boolean onError(MediaPlayer mp, int what, int extra) {
+                return true;
             }
         });
     }
@@ -82,7 +95,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setupListeners() {
-        btnPickVideo.setOnClickListener(v -> videoPickerLauncher.launch("video/*"));
+        btnPickVideo.setOnClickListener(v -> {
+            try {
+                videoPickerLauncher.launch("video/*");
+            } catch (Throwable t) {
+                Toast.makeText(this, "Tidak dapat membuka galeri.", Toast.LENGTH_SHORT).show();
+            }
+        });
 
         btnApplyWallpaper.setOnClickListener(v -> applyWallpaper());
 
@@ -90,10 +109,14 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void checkCurrentWallpaper() {
-        File videoFile = new File(getFilesDir(), VideoWallpaperService.VIDEO_FILE_NAME);
-        if (videoFile.exists() && videoFile.length() > 0) {
-            showReadyState(videoFile);
-        } else {
+        try {
+            File videoFile = new File(getFilesDir(), VideoWallpaperService.VIDEO_FILE_NAME);
+            if (videoFile.exists() && videoFile.length() > 0) {
+                showReadyState(videoFile);
+            } else {
+                showEmptyState();
+            }
+        } catch (Throwable t) {
             showEmptyState();
         }
     }
@@ -117,7 +140,7 @@ public class MainActivity extends AppCompatActivity {
                     out.flush();
                     success = true;
                 }
-            } catch (Exception e) {
+            } catch (Throwable e) {
                 success = false;
             }
 
@@ -143,8 +166,11 @@ public class MainActivity extends AppCompatActivity {
         btnApplyWallpaper.setEnabled(false);
         btnRemoveVideo.setVisibility(View.GONE);
 
-        if (videoPreview.isPlaying()) {
-            videoPreview.stopPlayback();
+        try {
+            if (videoPreview.isPlaying()) {
+                videoPreview.stopPlayback();
+            }
+        } catch (Throwable ignored) {
         }
     }
 
@@ -176,7 +202,7 @@ public class MainActivity extends AppCompatActivity {
                 durationSec = Long.parseLong(time) / 1000;
             }
             retriever.release();
-        } catch (Exception ignored) {
+        } catch (Throwable ignored) {
         }
 
         String details = String.format(Locale.getDefault(),
@@ -184,8 +210,12 @@ public class MainActivity extends AppCompatActivity {
                 sizeMb, durationSec);
         tvVideoDetails.setText(details);
 
-        videoPreview.setVideoPath(videoFile.getAbsolutePath());
-        videoPreview.start();
+        try {
+            videoPreview.setVideoPath(videoFile.getAbsolutePath());
+            videoPreview.start();
+        } catch (Throwable t) {
+            Log.w(TAG, "Error playing preview", t);
+        }
     }
 
     private void applyWallpaper() {
@@ -205,7 +235,7 @@ public class MainActivity extends AppCompatActivity {
             intent.putExtra("SET_LOCKSCREEN_WALLPAPER", true);
             startActivity(intent);
             return;
-        } catch (Exception ignored) {
+        } catch (Throwable ignored) {
         }
 
         // Strategy 2: ACTION_LIVE_WALLPAPER_CHOOSER
@@ -213,7 +243,7 @@ public class MainActivity extends AppCompatActivity {
             Intent intent = new Intent(WallpaperManager.ACTION_LIVE_WALLPAPER_CHOOSER);
             startActivity(intent);
             return;
-        } catch (Exception ignored) {
+        } catch (Throwable ignored) {
         }
 
         // Strategy 3: Direct LivePicker package
@@ -224,7 +254,7 @@ public class MainActivity extends AppCompatActivity {
             intent.putExtra("android.service.wallpaper.extra.LIVE_WALLPAPER_COMPONENT", componentName);
             startActivity(intent);
             return;
-        } catch (Exception ignored) {
+        } catch (Throwable ignored) {
         }
 
         // Strategy 4: Google Wallpapers app if installed
@@ -234,7 +264,7 @@ public class MainActivity extends AppCompatActivity {
                     "com.google.android.apps.wallpaper.picker.CategoryPickerActivity"));
             startActivity(intent);
             return;
-        } catch (Exception ignored) {
+        } catch (Throwable ignored) {
         }
 
         // Strategy 5: Generic ACTION_SET_WALLPAPER
@@ -242,34 +272,42 @@ public class MainActivity extends AppCompatActivity {
             Intent intent = new Intent(Intent.ACTION_SET_WALLPAPER);
             startActivity(Intent.createChooser(intent, "Setel Wallpaper"));
             return;
-        } catch (Exception ignored) {
+        } catch (Throwable ignored) {
         }
 
-        // If all system selectors fail: show helpful guidance dialog with direct Play Store link
         showInstallPickerPrompt();
     }
 
     private void showInstallPickerPrompt() {
-        new AlertDialog.Builder(this)
-                .setTitle("Komponen Sistem Belum Tersedia")
-                .setMessage("HP Anda belum memiliki pemilih Live Wallpaper bawaan (biasanya terjadi pada Android Go atau ROM tertentu).\n\nPasang aplikasi 'Wallpaper' resmi dari Google (gratis di Play Store) untuk membuka pratinjau live wallpaper?")
-                .setPositiveButton("Buka Google Play Store", (dialog, which) -> {
-                    try {
-                        startActivity(new Intent(Intent.ACTION_VIEW,
-                                Uri.parse("market://details?id=com.google.android.apps.wallpaper")));
-                    } catch (Exception e) {
-                        startActivity(new Intent(Intent.ACTION_VIEW,
-                                Uri.parse("https://play.google.com/store/apps/details?id=com.google.android.apps.wallpaper")));
-                    }
-                })
-                .setNegativeButton("Tutup", null)
-                .show();
+        try {
+            new AlertDialog.Builder(this)
+                    .setTitle("Komponen Sistem Belum Tersedia")
+                    .setMessage("HP Anda belum memiliki pemilih Live Wallpaper bawaan (biasanya terjadi pada Android Go atau ROM tertentu).\n\nPasang aplikasi 'Wallpaper' resmi dari Google (gratis di Play Store) untuk membuka pratinjau live wallpaper?")
+                    .setPositiveButton("Buka Google Play Store", (dialog, which) -> {
+                        try {
+                            startActivity(new Intent(Intent.ACTION_VIEW,
+                                    Uri.parse("market://details?id=com.google.android.apps.wallpaper")));
+                        } catch (Throwable e) {
+                            try {
+                                startActivity(new Intent(Intent.ACTION_VIEW,
+                                        Uri.parse("https://play.google.com/store/apps/details?id=com.google.android.apps.wallpaper")));
+                            } catch (Throwable ignored) {
+                            }
+                        }
+                    })
+                    .setNegativeButton("Tutup", null)
+                    .show();
+        } catch (Throwable ignored) {
+        }
     }
 
     private void removeVideo() {
-        File videoFile = new File(getFilesDir(), VideoWallpaperService.VIDEO_FILE_NAME);
-        if (videoFile.exists()) {
-            videoFile.delete();
+        try {
+            File videoFile = new File(getFilesDir(), VideoWallpaperService.VIDEO_FILE_NAME);
+            if (videoFile.exists()) {
+                videoFile.delete();
+            }
+        } catch (Throwable ignored) {
         }
 
         notifyWallpaperUpdated();
@@ -278,30 +316,42 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void notifyWallpaperUpdated() {
-        Intent intent = new Intent(VideoWallpaperService.ACTION_VIDEO_UPDATED);
-        intent.setPackage(getPackageName());
-        sendBroadcast(intent);
+        try {
+            Intent intent = new Intent(VideoWallpaperService.ACTION_VIDEO_UPDATED);
+            intent.setPackage(getPackageName());
+            sendBroadcast(intent);
+        } catch (Throwable ignored) {
+        }
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        if (layoutReadyState.getVisibility() == View.VISIBLE && !videoPreview.isPlaying()) {
-            videoPreview.start();
+        try {
+            if (layoutReadyState.getVisibility() == View.VISIBLE && !videoPreview.isPlaying()) {
+                videoPreview.start();
+            }
+        } catch (Throwable ignored) {
         }
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        if (videoPreview.isPlaying()) {
-            videoPreview.pause();
+        try {
+            if (videoPreview.isPlaying()) {
+                videoPreview.pause();
+            }
+        } catch (Throwable ignored) {
         }
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        executorService.shutdown();
+        try {
+            executorService.shutdown();
+        } catch (Throwable ignored) {
+        }
     }
 }
