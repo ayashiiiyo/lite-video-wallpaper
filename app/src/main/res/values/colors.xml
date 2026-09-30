@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Background & Surfaces -->
+    <color name="bg_page">#0F1117</color>
+    <color name="bg_surface">#1A1D26</color>
+    <color name="border_surface">#2B303C</color>
+
+    <!-- Typography -->
+    <color name="text_primary">#F9FAFB</color>
+    <color name="text_secondary">#9CA3AF</color>
+    <color name="text_muted">#6B7280</color>
+
+    <!-- Actions -->
+    <color name="action_primary">#2563EB</color>
+    <color name="action_primary_pressed">#1D4ED8</color>
+    <color name="action_secondary">#262A36</color>
+    <color name="action_secondary_border">#3A4150</color>
+
+    <!-- Status -->
+    <color name="status_ready_bg">#13241C</color>
+    <color name="status_ready_border">#1D4A34</color>
+    <color name="status_ready_text">#34D399</color>
+
+    <color name="status_empty_bg">#1E222D</color>
+    <color name="status_empty_border">#2C3445</color>
+    <color name="status_empty_text">#94A3B8</color>
+</resources>

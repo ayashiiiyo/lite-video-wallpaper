@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Lite Video Wallpaper</string>
+    <string name="wallpaper_service_name">Lite Video Wallpaper</string>
+    <string name="wallpaper_service_description">Menjalankan video pilihan Anda sebagai wallpaper layar utama dan layar kunci secara hemat daya.</string>
+
+    <!-- Header -->
+    <string name="title_main">Wallpaper Video</string>
+    <string name="subtitle_main">Pemutar wallpaper video ringan khusus efisiensi RAM dan baterai.</string>
+
+    <!-- Status Card -->
+    <string name="status_title">Status Video</string>
+    <string name="status_empty_title">Belum Ada Video</string>
+    <string name="status_empty_desc">Pilih video dari galeri HP Anda. Disarankan video pendek 4 sampai 9 detik berformat MP4.</string>
+    <string name="status_ready_title">Video Siap Digunakan</string>
+    <string name="status_loading">Menyalin dan menyiapkan video...</string>
+
+    <!-- Details -->
+    <string name="label_duration">Durasi:</string>
+    <string name="label_filesize">Ukuran:</string>
+
+    <!-- Buttons -->
+    <string name="btn_select_video">Pilih Video dari Galeri</string>
+    <string name="btn_apply_wallpaper">Terapkan Jadi Wallpaper</string>
+    <string name="btn_remove_video">Hapus Video</string>
+
+    <!-- Guidance Card -->
+    <string name="guide_title">Panduan Penggunaan</string>
+    <string name="guide_tip_1">1. Gunakan video resolusi 720p atau sesuai layar HP Anda agar pemakaian RAM tetap di bawah 25 MB.</string>
+    <string name="guide_tip_2">2. Putaran video otomatis berhenti saat membuka aplikasi lain atau saat layar mati, sehingga baterai tidak boros.</string>
+    <string name="guide_tip_3">3. Untuk memasang di Layar Kunci: Di jendela pratinjau sistem setelah menekan Terapkan, pilih opsi Layar utama dan layar kunci.</string>
+
+    <!-- Toasts & Messages -->
+    <string name="msg_video_loaded">Video berhasil dimuat.</string>
+    <string name="msg_video_error">Gagal membaca berkas video. Pastikan format video adalah MP4.</string>
+    <string name="msg_video_removed">Video dihapus. Wallpaper kembali ke kondisi kosong.</string>
+    <string name="msg_please_select_video">Silakan pilih video terlebih dahulu.</string>
+</resources>

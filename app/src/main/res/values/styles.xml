@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.LiteVideoWallpaper" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/action_primary</color>
+        <item name="colorPrimaryVariant">@color/action_primary_pressed</item>
+        <item name="colorOnPrimary">@color/text_primary</color>
+        <item name="android:windowBackground">@color/bg_page</item>
+        <item name="android:statusBarColor">@color/bg_page</item>
+        <item name="android:navigationBarColor">@color/bg_page</item>
+    </style>
+</resources>
