@@ -26,13 +26,16 @@ Aplikasi Android Wallpaper Video Live yang sangat ringan, dirancang khusus untuk
 
 ---
 
-## Cara Unduh APK (GitHub Actions)
+## Cara Unduh APK
 
-Aplikasi ini sudah dilengkapi alur kerja otomatis (CI/CD) via GitHub Actions:
+Anda dapat langsung mengunduh berkas APK ke HP Anda melalui tautan rilis berikut:
 
-1. Buka tab **Actions** di repositori GitHub ini: [GitHub Actions Workflow](https://github.com/ayashiiiyo/lite-video-wallpaper/actions).
+- **[Download APK Langsung (v1.0.0)](https://github.com/ayashiiiyo/lite-video-wallpaper/releases/download/v1.0.0/LiteVideoWallpaper-v1.0.0.apk)**
+
+Atau melalui tab **Actions** di repositori GitHub ini:
+1. Buka tab [GitHub Actions Workflow](https://github.com/ayashiiiyo/lite-video-wallpaper/actions).
 2. Pilih workflow **Build Android APK** terbaru.
-3. Di bagian bawah (Artifacts), unduh berkas **LiteVideoWallpaper-debug.zip**.
+3. Di bagian bawah (**Artifacts**), unduh berkas **LiteVideoWallpaper-debug.zip**.
 4. Ekstrak dan pasang berkas APK di HP Anda.
 
 ---
